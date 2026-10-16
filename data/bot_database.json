@@ -1,0 +1,33 @@
+{
+  "users": {
+    "12345678": {
+      "user_id": 12345678,
+      "username": "testuser",
+      "full_name": "Test User",
+      "is_admin": false,
+      "subscription_end": "2026-11-15T12:45:05.171812",
+      "status": "active",
+      "created_at": "2026-10-16T12:45:04.923331"
+    },
+    "1310039772": {
+      "user_id": 1310039772,
+      "username": "AboHamdi",
+      "full_name": "أبو حمدي",
+      "is_admin": true,
+      "subscription_end": null,
+      "status": "inactive",
+      "created_at": "2026-10-16T13:16:14.840760"
+    }
+  },
+  "license_keys": {
+    "TIK-30D-AA44AB2A": {
+      "key_code": "TIK-30D-AA44AB2A",
+      "days": 30,
+      "is_used": true,
+      "used_by": 12345678,
+      "created_at": "2026-10-16T12:45:05.014635",
+      "used_at": "2026-10-16T12:45:05.076530"
+    }
+  },
+  "meta": {}
+}
