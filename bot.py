@@ -190,7 +190,14 @@ async def cb_check_status(callback: types.CallbackQuery):
 @dp.message(F.document)
 async def handle_admin_excel_upload(message: types.Message):
     user_id = message.from_user.id
+    doc = message.document
+    filename = doc.file_name or ""
+    
+    if not (filename.lower().endswith(".xlsx") or filename.lower().endswith(".xls") or filename.lower().endswith(".csv")):
+        return
+
     if not is_admin(user_id):
+        await message.answer(f"⚠️ <b>عذراً يا {message.from_user.first_name}!</b>\nخاصية رفع وتحديث ملفات الإكسل مخصصة لحساب الأدمن فقط.\n\n🆔 معرفك الحالي: <code>{user_id}</code>\nإذا كنت أنت صاحب البوت، تأكد من إضافة هذا المعرف إلى <code>ADMIN_IDS</code> في إعدادات Railway.", parse_mode="HTML")
         return
 
     doc = message.document
@@ -236,6 +243,26 @@ async def handle_admin_excel_upload(message: types.Message):
 
 # ----------------- أوامر ولوحة تحكم الأدمن -----------------
 
+
+@dp.message(Command("cleardata"))
+@dp.message(Command("reset"))
+async def cmd_clear_data(message: types.Message):
+    if not is_admin(message.from_user.id):
+        await message.answer(f"⚠️ هذا الأمر متاح للأدمن فقط. معرفك: <code>{message.from_user.id}</code>", parse_mode="HTML")
+        return
+        
+    excel_parser.reset_leagues_data()
+    await message.answer("🗑️ <b>تم مسح وتصفير كافة بيانات الحسابات والليجات بنجاح!</b>\n\nأصبح التطبيق وقاعدة البيانات مصفّرة الآن (0 حسابات) وبانتظار رفع ملف إكسل جديد.", parse_mode="HTML")
+
+@dp.callback_query(F.data == "admin_clear_data")
+async def cb_admin_clear_data(callback: types.CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("غير مصرح لك", show_alert=True)
+        return
+    await callback.answer()
+    excel_parser.reset_leagues_data()
+    await callback.message.answer("🗑️ <b>تم مسح وتصفير كافة بيانات الحسابات والليجات بنجاح يا أبو حمدي!</b>\nالتطبيق الآن نظيف تماماً بانتظار رفع ملف الإكسيل الجديد.", parse_mode="HTML")
+
 @dp.message(Command("admin"))
 async def cmd_admin(message: types.Message):
     if not is_admin(message.from_user.id):
@@ -257,7 +284,7 @@ async def cmd_admin(message: types.Message):
         f"• ❌ <b>إلغاء اشتراك:</b> <code>/delsub &lt;user_id&gt;</code>\n"
         f"• 🎟 <b>توليد أكواد:</b> <code>/gencode &lt;days&gt; [count]</code>\n"
         f"• 📢 <b>إذاعة للكل:</b> <code>/broadcast &lt;رسالتك&gt;</code>\n"
-        f"• 📥 <b>تصدير البيانات:</b> <code>/export</code>"
+        f"• 📥 <b>تصدير البيانات:</b> <code>/export</code>\n• 🗑️ <b>تصفير البيانات:</b> <code>/cleardata</code>"
     )
     await message.answer(text, parse_mode="HTML")
 
@@ -274,7 +301,7 @@ async def cb_admin_panel(callback: types.CallbackQuery):
         f"• المستخدمين: {stats["total_users"]}\n"
         f"• النشطين: {stats["active_users"]}\n"
         f"• الحسابات بالملف: {current_data["total_accounts"]}\n\n"
-        f"💡 لرفع ملف جديد، فقط اسحب ملف الإكسل وأفلته هنا في المحادثة!"
+        f"💡 لرفع ملف جديد، فقط اسحب ملف الإكسل وأفلته هنا في المحادثة!", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🗑️ مسح وتصفير كل البيانات", callback_data="admin_clear_data")]])
     )
     await callback.message.answer(text, parse_mode="HTML")
 
@@ -373,7 +400,15 @@ async def cmd_export(message: types.Message):
 
 async def start_bot():
     logging.info("Starting Telegram Bot Polling with token...")
-    await dp.start_polling(bot)
+    while True:
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logging.info("Webhook cleaned, starting polling...")
+            await dp.start_polling(bot, drop_pending_updates=True)
+            break
+        except Exception as e:
+            logging.error(f"Telegram polling error: {e}, retrying in 5 seconds...")
+            await asyncio.sleep(5)
 
 if __name__ == "__main__":
     import asyncio

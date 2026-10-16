@@ -150,6 +150,28 @@ async def admin_upload_excel(
             except:
                 pass
 
+
+@app.post("/api/admin/clear")
+async def admin_clear_data():
+    clean_data = excel_parser.reset_leagues_data()
+    return {
+        "success": True,
+        "message": "تم مسح وتصفير جميع بيانات الحسابات والليجات بنجاح من السيرفر!",
+        "stats": clean_data
+    }
+
+@app.on_event("startup")
+async def on_startup_run_bot():
+    token = os.getenv("BOT_TOKEN", "8881972676:AAFbhVZWztH9JKit5EHXbPN2sSeJsGiJYlQ")
+    if token:
+        import asyncio
+        try:
+            from bot import start_bot
+            asyncio.create_task(start_bot())
+            print("🚀 Background Telegram Bot Polling task launched on startup.")
+        except Exception as e:
+            print(f"Error launching bot task: {e}")
+
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(STATIC_DIR):
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
