@@ -38,6 +38,30 @@ body {
   transform: scale(0.97);
 }
 
+/* 3D Compact League Selection Cards */
+.league-card-compact {
+  border-radius: 18px;
+  min-height: 96px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.league-card-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px rgba(0, 242, 254, 0.25);
+}
+
+/* Sleek League Badge */
+.league-badge-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
 /* 3D Rank Badges */
 .badge-gold-3d {
   background: linear-gradient(135deg, #ffd700, #ff8c00);

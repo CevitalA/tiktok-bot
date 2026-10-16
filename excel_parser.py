@@ -63,14 +63,15 @@ def parse_excel_file(file_path: str) -> dict:
                 pass
 
     header_map = {}
-    rows_iter = target_sheet.iter_rows(values_only=True)
+    # Use values_only=False so we can extract cell.hyperlink if present
+    rows_iter = target_sheet.iter_rows(values_only=False)
     
-    first_row = next(rows_iter, None)
-    if not first_row:
+    first_row_cells = next(rows_iter, None)
+    if not first_row_cells:
         raise ValueError("ملف الإكسل فارغ تماماً!")
         
-    for idx, col in enumerate(first_row):
-        col_norm = normalize_text(col)
+    for idx, cell in enumerate(first_row_cells):
+        col_norm = normalize_text(cell.value)
         header_map[idx] = col_norm
 
     col_mapping = {
@@ -78,18 +79,37 @@ def parse_excel_file(file_path: str) -> dict:
         "creatorName": ["creatorname", "creator", "name", "الاسم", "اسم", "اسمالمنشئ", "منشئ"],
         "username": ["username", "user", "اليوزر", "اسمالمستخدم", "يوزر", "حساب"],
         "league": ["league", "الليج", "الدوري", "المستوى", "ليج", "الدرجة"],
-        "earnings": ["estearnings($)", "earnings", "earning", "ارباح", "الارباح", "الدولار", "usd", "$", "profit"],
+        "earnings": ["estearnings($)", "estearnings", "earnings", "earning", "ارباح", "الارباح", "الدولار", "usd", "$", "profit"],
         "diamonds": ["diamonds", "diamond", "الماس", "الالماس", "الألماس"],
         "eligibility": ["eligibility", "حالة", "الحالة", "الاهلية", "eligible"],
-        "creatorUrl": ["creatorurl", "url", "link", "رابط", "لينك", "tiktok"],
-        "avatar": ["avatar", "avatarurl", "image", "photo", "picture", "pic", "profileimage", "profilepic", "useravatar", "صورة", "الصورة", "صورةالمنشئ", "صورةالمستخدم", "صورةالبروفايل", "رابطالصورة", "افاتار", "أفاتار", "لوجو"]
+        "creatorUrl": [
+            "creatorurl", "creatorlink", "creatoruri", "profileurl", "profilelink",
+            "tiktokurl", "tiktoklink", "userurl", "accounturl", "رابطالمنشئ", "لينكالمنشئ",
+            "رابطالحساب", "لينكالحساب", "رابطالتيكتوك", "لينكالتيكتوك", "رابطالصفحة",
+            "رابط", "لينك", "url", "link", "tiktok"
+        ],
+        "avatar": [
+            "avatar", "avatarurl", "image", "photo", "picture", "pic", "profileimage",
+            "profilepic", "useravatar", "صورة", "الصورة", "صورةالمنشئ", "صورةالمستخدم",
+            "صورةالبروفايل", "رابطالصورة", "افاتار", "أفاتار", "لوجو"
+        ]
     }
 
     def find_col_idx(field_name):
         candidates = col_mapping[field_name]
+        # Priority 1: exact normalized match
         for idx, col_str in header_map.items():
+            if col_str in candidates:
+                return idx
+        # Priority 2: candidate is contained in col_str or vice versa (with disambiguation)
+        for idx, col_str in header_map.items():
+            # Disambiguation: avoid creatorUrl matching image/avatar columns
+            if field_name == "creatorUrl" and any(img_w in col_str for img_w in ["avatar", "image", "photo", "picture", "pic", "صورة", "افاتار", "لوجو"]):
+                continue
+            if field_name == "avatar" and "creator" in col_str and "url" in col_str and "avatar" not in col_str:
+                continue
             for cand in candidates:
-                if cand in col_str or col_str in cand:
+                if cand == col_str or cand in col_str or col_str in cand:
                     return idx
         return None
 
@@ -103,14 +123,19 @@ def parse_excel_file(file_path: str) -> dict:
     total_earnings = 0.0
     total_diamonds = 0
 
-    for r_idx, row in enumerate(rows_iter, start=2):
-        if not any(row):
+    for r_idx, row_cells in enumerate(rows_iter, start=2):
+        if not row_cells or not any(c.value is not None for c in row_cells):
             continue
             
         def get_val(f_name):
             c_idx = resolved_cols[f_name]
-            if c_idx is not None and c_idx < len(row):
-                return row[c_idx]
+            if c_idx is not None and c_idx < len(row_cells):
+                cell = row_cells[c_idx]
+                if f_name == "creatorUrl":
+                    # Check for Excel hyperlink target first
+                    if cell.hyperlink and cell.hyperlink.target:
+                        return cell.hyperlink.target
+                return cell.value
             return None
 
         league_raw = get_val("league")
@@ -133,8 +158,20 @@ def parse_excel_file(file_path: str) -> dict:
         username = str(raw_user or f"user_{r_idx}").strip().lstrip("@")
         creator_name = str(raw_name or username).strip()
         
-        if raw_url and str(raw_url).startswith("http"):
-            creator_url = str(raw_url).strip()
+        # Clean and format Creator URL
+        clean_url = str(raw_url).strip() if raw_url is not None else ""
+        clean_url = clean_url.strip("'\" \t\r\n\u200e\u200f")
+        if clean_url and clean_url.lower() not in ["none", "null", "nan", "-", ""]:
+            if clean_url.lower().startswith("http://") or clean_url.lower().startswith("https://"):
+                creator_url = clean_url
+            elif "tiktok.com" in clean_url.lower():
+                creator_url = "https://" + clean_url.lstrip("/").lstrip(":")
+            elif clean_url.startswith("@"):
+                creator_url = f"https://www.tiktok.com/{clean_url}"
+            elif "." in clean_url and "/" in clean_url:
+                creator_url = "https://" + clean_url
+            else:
+                creator_url = f"https://www.tiktok.com/@{clean_url.lstrip('@')}"
         else:
             creator_url = f"https://www.tiktok.com/@{username}"
 
