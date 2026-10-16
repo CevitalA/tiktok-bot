@@ -90,7 +90,8 @@ async def cmd_start(message: types.Message):
     user = message.from_user
     user_id = user.id
     username = user.username or ""
-    full_name = f"{user.first_name} {user.last_name or ""}".strip()
+    user_last = user.last_name or ''
+    full_name = f"{user.first_name} {user_last}".strip()
     
     database.get_or_create_user(user_id, username, full_name, is_admin(user_id))
     sub = database.check_subscription(user_id, ADMIN_IDS)
@@ -100,8 +101,8 @@ async def cmd_start(message: types.Message):
             f"مرحباً بك يا <b>{user.first_name}</b> في بوت دوريات تيك توك لايف! 🏆\n\n"
             f"👑 <b>تطوير: أبو حمدي (Abo Hamdi)</b>\n"
             f"✅ <b>حالة الاشتراك:</b> مفعّل\n"
-            f"📅 <b>ينتهي في:</b> <code>{sub["end_date"]}</code>\n"
-            f"⏳ <b>المتبقي:</b> {sub["days_left"]} يوم و {sub.get("hours_left", 0)} ساعة\n\n"
+            f"📅 <b>ينتهي في:</b> <code>{sub['end_date']}</code>\n"
+            f"⏳ <b>المتبقي:</b> {sub['days_left']} يوم و {sub.get('hours_left', 0)} ساعة\n\n"
             f"اضغط على الزر بالأسفل لفتح تطبيق الليجات مباشرة وتصفح الحسابات المصنفة 👇"
         )
     else:
@@ -126,8 +127,8 @@ async def cmd_status(message: types.Message):
         msg = (
             f"📊 <b>تفاصيل اشتراكك:</b>\n\n"
             f"• الحالة: 🟢 مفعّل\n"
-            f"• تاريخ الانتهاء: <code>{sub["end_date"]}</code>\n"
-            f"• المتبقي: <b>{sub["days_left"]} يوم</b>\n\n"
+            f"• تاريخ الانتهاء: <code>{sub['end_date']}</code>\n"
+            f"• المتبقي: <b>{sub['days_left']} يوم</b>\n\n"
             f"لأي استفسار يمكنك التواصل مع الدعم: {WHATSAPP_URL}"
         )
     else:
@@ -174,7 +175,7 @@ async def cb_check_status(callback: types.CallbackQuery):
     sub = database.check_subscription(callback.from_user.id, ADMIN_IDS)
     if sub["is_active"]:
         await callback.message.answer(
-            f"🟢 <b>اشتراكك مفعّل بنجاح!</b>\nينتهي في: {sub["end_date"]} ({sub["days_left"]} يوم متبقي)",
+            f"🟢 <b>اشتراكك مفعّل بنجاح!</b>\nينتهي في: {sub['end_date']} ({sub['days_left']} يوم متبقي)",
             parse_mode="HTML",
             reply_markup=get_main_keyboard(callback.from_user.id, True)
         )
@@ -222,11 +223,11 @@ async def handle_admin_excel_upload(message: types.Message):
         report = (
             f"✅ <b>تم تحديث قاعدة بيانات الليجات بنجاح يا أبو حمدي!</b> 🎉\n\n"
             f"📊 <b>ملخص البيانات المعالجة:</b>\n"
-            f"• 👥 إجمالي الحسابات: <b>{summary["total_accounts"]} حساب</b>\n"
-            f"• 🏆 عدد الليجات النشطة: <b>{len(summary["active_leagues"])} ليج</b>\n"
-            f"• 💎 إجمالي الألماس: <b>{summary["total_diamonds"]:,}</b>\n"
-            f"• 💰 إجمالي الأرباح المتوقعة: <b>${summary["total_earnings"]:,.2f}</b>\n\n"
-            f"📌 الليجات المحدثة:\n<code>{", ".join(summary["active_leagues"])}</code>\n\n"
+            f"• 👥 إجمالي الحسابات: <b>{summary['total_accounts']} حساب</b>\n"
+            f"• 🏆 عدد الليجات النشطة: <b>{len(summary['active_leagues'])} ليج</b>\n"
+            f"• 💎 إجمالي الألماس: <b>{summary['total_diamonds']:,}</b>\n"
+            f"• 💰 إجمالي الأرباح المتوقعة: <b>${summary['total_earnings']:,.2f}</b>\n\n"
+            f"📌 الليجات المحدثة:\n<code>{', '.join(summary['active_leagues'])}</code>\n\n"
             f"🚀 أصبح التحديث متاحاً الآن لجميع المشتركين داخل التطبيق فوراً!"
         )
         await wait_msg.edit_text(report, parse_mode="HTML")
@@ -273,11 +274,11 @@ async def cmd_admin(message: types.Message):
     
     text = (
         f"👑 <b>لوحة تحكم الأدمن - أبو حمدي:</b>\n\n"
-        f"👥 إجمالي المستخدمين: <b>{stats["total_users"]}</b>\n"
-        f"🟢 المشتركين النشطين: <b>{stats["active_users"]}</b>\n"
-        f"🎟 الأكواد غير المستخدمة: <b>{stats["unused_keys"]}</b>\n"
-        f"📊 الحسابات الحالية بالتطبيق: <b>{current_data["total_accounts"]}</b>\n"
-        f"🕒 آخر تحديث للملف: <b>{current_data.get("updated_at") or "لم يُرفع بعد"}</b>\n\n"
+        f"👥 إجمالي المستخدمين: <b>{stats['total_users']}</b>\n"
+        f"🟢 المشتركين النشطين: <b>{stats['active_users']}</b>\n"
+        f"🎟 الأكواد غير المستخدمة: <b>{stats['unused_keys']}</b>\n"
+        f"📊 الحسابات الحالية بالتطبيق: <b>{current_data['total_accounts']}</b>\n"
+        f"🕒 آخر تحديث للملف: <b>{current_data.get('updated_at') or 'لم يُرفع بعد'}</b>\n\n"
         f"<b>أوامر الأدمن السريعة:</b>\n"
         f"• 📤 <b>تحديث البيانات:</b> أرسل ملف الإكسل (<code>.xlsx</code>) مباشرة في الشات\n"
         f"• ➕ <b>تفعيل اشتراك:</b> <code>/addsub &lt;user_id&gt; &lt;days&gt;</code>\n"
@@ -296,14 +297,20 @@ async def cb_admin_panel(callback: types.CallbackQuery):
     await callback.answer()
     stats = database.get_dashboard_stats()
     current_data = excel_parser.get_current_leagues_data()
-    text = (
-        f"👑 <b>لوحة الأدمن السريعة - أبو حمدي:</b>\n\n"
-        f"• المستخدمين: {stats["total_users"]}\n"
-        f"• النشطين: {stats["active_users"]}\n"
-        f"• الحسابات بالملف: {current_data["total_accounts"]}\n\n"
-        f"💡 لرفع ملف جديد، فقط اسحب ملف الإكسل وأفلته هنا في المحادثة!", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🗑️ مسح وتصفير كل البيانات", callback_data="admin_clear_data")]])
-    )
-    await callback.message.answer(text, parse_mode="HTML")
+    msg_lines = [
+        "👑 <b>لوحة الأدمن السريعة - أبو حمدي:</b>\n",
+        f"• المستخدمين: {stats['total_users']}",
+        f"• النشطين: {stats['active_users']}",
+        f"• الحسابات بالملف: {current_data['total_accounts']}\n",
+        "💡 لرفع ملف جديد، فقط اسحب ملف الإكسل وأفلته هنا في المحادثة!"
+    ]
+    text = "\n".join(msg_lines)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎟 توليد 5 أكواد (30 يوم)", callback_data="gen_5_30"), InlineKeyboardButton(text="🎟 كود واحد (30 يوم)", callback_data="gen_1_30")],
+        [InlineKeyboardButton(text="🎟 كود سنة (365 يوم)", callback_data="gen_1_365")],
+        [InlineKeyboardButton(text="🗑️ مسح وتصفير كل البيانات", callback_data="admin_clear_data")]
+    ])
+    await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @dp.message(Command("addsub"))
 async def cmd_add_sub(message: types.Message):
@@ -343,25 +350,55 @@ async def cmd_del_sub(message: types.Message):
     database.remove_subscription(target_id)
     await message.answer(f"🚫 تم إلغاء اشتراك المستخدم <code>{target_id}</code>.", parse_mode="HTML")
 
+def _normalize_num(val_str: str) -> str:
+    eastern_to_western = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+    return val_str.translate(eastern_to_western)
+
 @dp.message(Command("gencode"))
 async def cmd_gen_code(message: types.Message):
-    if not is_admin(message.from_user.id):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(
+            f"⚠️ <b>عذراً يا {message.from_user.first_name}!</b>\n"
+            f"خاصية توليد أكواد الاشتراك مخصصة للأدمن فقط.\n\n"
+            f"🆔 <b>معرفك الحالي (Telegram ID):</b> <code>{user_id}</code>\n\n"
+            f"📌 <b>لتفعيل حسابك كأدمن:</b>\n"
+            f"افتح مشروعك في <b>Railway</b> ⬅️ تبويب <b>Variables</b> ⬅️ أضف هذا الرقم <code>{user_id}</code> داخل متغير <code>ADMIN_IDS</code> واحفظ التغييرات.",
+            parse_mode="HTML"
+        )
         return
         
-    parts = message.text.split()
-    if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("⚠️ الاستخدام:\n<code>/gencode &lt;days&gt; [count]</code>\nمثال لتوليد 5 أكواد مدة كل كود 30 يوم:\n<code>/gencode 30 5</code>", parse_mode="HTML")
-        return
-        
-    days = int(parts[1])
-    count = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
-    count = min(count, 50)
+    raw_text = _normalize_num(message.text or "")
+    parts = raw_text.split()
+    
+    if len(parts) < 2:
+        days = 30
+        count = 1
+    else:
+        if not parts[1].isdigit():
+            await message.answer(
+                "⚠️ <b>طريقة كتابة الأمر:</b>\n"
+                "<code>/gencode &lt;عدد الأيام&gt; &lt;عدد الأكواد&gt;</code>\n\n"
+                "📌 <b>أمثلة:</b>\n"
+                "• <code>/gencode 30 5</code> (لتوليد 5 أكواد مدة كل كود 30 يوم)\n"
+                "• <code>/gencode 30</code> (لتوليد كود واحد 30 يوم)\n"
+                "• <code>/gencode 365 1</code> (لتوليد كود سنة كاملة)",
+                parse_mode="HTML"
+            )
+            return
+        days = int(parts[1])
+        count = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+
+    count = max(1, min(count, 50))
+    days = max(1, days)
     
     codes = [database.generate_license_key(days) for _ in range(count)]
     codes_str = "\n".join(f"• <code>{c}</code>" for c in codes)
     
     await message.answer(
-        f"🎟 <b>تم توليد {count} كود اشتراك لمدة {days} يوم:</b>\n\n{codes_str}",
+        f"🎟 <b>تم توليد {count} كود اشتراك بنجاح ({days} يوم):</b>\n\n"
+        f"{codes_str}\n\n"
+        f"💡 <i>المشترك يستطيع نسخ أي كود والضغط على زر (إدخال كود التفعيل) في البوت ليتفعل حسابه فوراً.</i>",
         parse_mode="HTML"
     )
 
