@@ -1,3 +1,4 @@
+import re
 import os
 import json
 import secrets
@@ -168,18 +169,42 @@ def generate_license_key(days: int, prefix: str = "TIK") -> str:
     _save_db(db)
     return key_code
 
+def clean_license_key(raw_code: str) -> str:
+    if not raw_code:
+        return ""
+    cleaned = raw_code.replace("•", "").replace("`", "").replace("'", "").replace('"', "").strip()
+    match = re.search(r"([A-Za-z0-9]+-\d+D-[A-Za-z0-9]+)", cleaned, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return cleaned.upper()
+
 def redeem_license_key(user_id: int, key_code: str) -> dict:
-    key_code = key_code.strip().upper()
+    key_code_cleaned = clean_license_key(key_code)
     db = _load_db()
     
-    key_item = db["license_keys"].get(key_code)
+    # Search key case-insensitively and cleanly
+    target_key = None
+    key_item = None
+    for k, v in db.get("license_keys", {}).items():
+        if k.upper() == key_code_cleaned:
+            target_key = k
+            key_item = v
+            break
+            
     if not key_item:
-        return {"success": False, "message": "❌ الكود غير صحيح، تأكد من كتابته بدقة."}
+        return {
+            "success": False,
+            "message": f"❌ <b>الكود غير صحيح!</b>\nتأكد من نسخ الكود بدقة كما وصلك (مثال: <code>TIK-30D-XXXXXX</code>)."
+        }
         
     if key_item.get("is_used"):
-        return {"success": False, "message": "⚠️ هذا الكود تم استخدامه من قبل!"}
+        used_at = key_item.get("used_at", "")[:10]
+        return {
+            "success": False,
+            "message": f"⚠️ <b>هذا الكود تم استخدامه مسبقاً!</b>\nتم تفعيله بتاريخ: <code>{used_at}</code>."
+        }
         
-    days = key_item["days"]
+    days = key_item.get("days", 30)
     key_item["is_used"] = True
     key_item["used_by"] = user_id
     key_item["used_at"] = datetime.now().isoformat()
@@ -191,7 +216,7 @@ def redeem_license_key(user_id: int, key_code: str) -> dict:
         "success": True,
         "days": days,
         "end_date": end_date_str,
-        "message": f"🎉 تم تفعيل الاشتراك بنجاح لمدة {days} يوم!\nينتهي في: {end_date_str}"
+        "message": f"🎉 <b>تم تفعيل الاشتراك بنجاح يا بطل!</b>\n\n⏳ <b>المدة:</b> {days} يوم\n📅 <b>ينتهي في:</b> <code>{end_date_str}</code>\n\nيمكنك الآن فتح تطبيق الليجات مباشرة والاستمتاع بكافة المميزات! 🏆"
     }
 
 def get_dashboard_stats() -> dict:

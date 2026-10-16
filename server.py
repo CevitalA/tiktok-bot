@@ -107,6 +107,25 @@ async def verify_user_access(req: VerifyRequest):
             "message": "عفواً، يتطلب الوصول لهذا التطبيق اشتراكاً مفعلاً. تواصل مع الأدمن أو استخدم كود التفعيل داخل البوت."
         }
 
+
+class RedeemRequest(BaseModel):
+    initData: str = ""
+    code: str = ""
+
+@app.post("/api/redeem")
+async def api_redeem_key(req: RedeemRequest):
+    token = os.getenv("BOT_TOKEN", "8881972676:AAFbhVZWztH9JKit5EHXbPN2sSeJsGiJYlQ")
+    if not req.initData:
+        return {"success": False, "message": "جلسة التليجرام غير متوفرة."}
+        
+    res = verify_telegram_init_data(req.initData, token)
+    if not res["valid"] or not res["user"]:
+        return {"success": False, "message": "جلسة التليجرام غير صالحة. يرجى فتح التطبيق من داخل البوت."}
+        
+    user_id = res["user"]["id"]
+    redeem_res = database.redeem_license_key(user_id, req.code)
+    return redeem_res
+
 @app.get("/api/leagues")
 async def get_leagues_data():
     return excel_parser.get_current_leagues_data()

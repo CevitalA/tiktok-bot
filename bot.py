@@ -21,7 +21,14 @@ import excel_parser
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8881972676:AAFbhVZWztH9JKit5EHXbPN2sSeJsGiJYlQ")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-domain.com")
+# اكتشاف رابط Railway تلقائياً إذا كان متاحاً
+_railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL")
+if _railway_domain:
+    _auto_url = f"https://{_railway_domain}" if not _railway_domain.startswith("http") else _railway_domain
+else:
+    _auto_url = "https://your-domain.com"
+
+WEBAPP_URL = os.getenv("WEBAPP_URL", _auto_url)
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "AboHamdi")
 WHATSAPP_URL = os.getenv("WHATSAPP_URL", "https://wa.me/201011055811")
 WHATSAPP_PHONE = os.getenv("WHATSAPP_PHONE", "+201011055811")
@@ -142,32 +149,66 @@ async def cmd_status(message: types.Message):
 
 @dp.message(Command("redeem"))
 async def cmd_redeem(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("⚠️ يرجى كتابة الكود بعد الأمر، مثال:\n<code>/redeem TIK-30D-XXXXXX</code>", parse_mode="HTML")
+    raw_text = message.text or ""
+    code = database.clean_license_key(raw_text)
+    if not code or code == "REDEEM":
+        await message.answer("⚠️ <b>يرجى كتابة الكود بعد الأمر، مثال:</b>\n<code>/redeem TIK-30D-XXXXXX</code>", parse_mode="HTML")
         return
         
-    code = args[1].strip()
     res = database.redeem_license_key(message.from_user.id, code)
-    await message.answer(res["message"])
+    sub = database.check_subscription(message.from_user.id, ADMIN_IDS)
+    await message.answer(
+        res["message"],
+        parse_mode="HTML",
+        reply_markup=get_main_keyboard(message.from_user.id, sub['is_active'])
+    )
 
 @dp.callback_query(F.data == "prompt_redeem")
 async def cb_prompt_redeem(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
-    await callback.message.answer("🎟 <b>أرسل الآن كود التفعيل المكوّن لك:</b>\n(مثال: <code>TIK-30D-XXXXXX</code>)", parse_mode="HTML")
+    await callback.message.answer(
+        "🎟 <b>أرسل الآن كود التفعيل المخصص لك:</b>\n\n💡 <i>فقط الصق الكود هنا في المحادثة مباشرة (مثال: <code>TIK-30D-XXXXXX</code>) وسيتم تفعيل حسابك فوراً!</i>",
+        parse_mode="HTML"
+    )
     await state.set_state(Form.waiting_for_key)
 
 @dp.message(Form.waiting_for_key)
 async def process_redeem_key(message: types.Message, state: FSMContext):
-    code = message.text.strip()
-    res = database.redeem_license_key(message.from_user.id, code)
+    code = database.clean_license_key(message.text or "")
     await state.clear()
-    
+    res = database.redeem_license_key(message.from_user.id, code)
     sub = database.check_subscription(message.from_user.id, ADMIN_IDS)
     await message.answer(
         res["message"],
-        reply_markup=get_main_keyboard(message.from_user.id, sub["is_active"])
+        parse_mode="HTML",
+        reply_markup=get_main_keyboard(message.from_user.id, sub['is_active'])
     )
+
+@dp.message(F.text & ~F.text.startswith("/"))
+async def handle_direct_text(message: types.Message, state: FSMContext):
+    text = (message.text or "").strip()
+    matched_key = database.clean_license_key(text)
+    
+    if "TIK-" in matched_key:
+        await state.clear()
+        res = database.redeem_license_key(message.from_user.id, matched_key)
+        sub = database.check_subscription(message.from_user.id, ADMIN_IDS)
+        await message.answer(
+            res["message"],
+            parse_mode="HTML",
+            reply_markup=get_main_keyboard(message.from_user.id, sub['is_active'])
+        )
+        return
+        
+    lower_t = text.lower()
+    if any(w in lower_t for w in ["تفعيل", "كود", "اشتراك", "شفرة", "رمز"]):
+        await message.answer(
+            f"🎟 <b>أهلاً بك! لتفعيل اشتراكك:</b>\nفقط أرسل كود التفعيل مباشرة في المحادثة (مثال: <code>TIK-30D-XXXXXX</code>) وسيتفعل حسابك فوراً.\n\nإذا لم يكن لديك كود تفعيل، يمكنك التواصل مع <b>أبو حمدي</b> عبر واتساب للاشتراك:\n{WHATSAPP_URL}",
+            parse_mode="HTML"
+        )
+        await state.set_state(Form.waiting_for_key)
+        return
+
 
 @dp.callback_query(F.data == "check_status")
 async def cb_check_status(callback: types.CallbackQuery):
